@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karar Çarkı ☕</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; color: #f39c12; margin-bottom: 8px; }
+        .header p { font-size: 14px; color: #bdc3c7; }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin-bottom: 25px;
+        }
+        .arrow {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 25px solid #e74c3c;
+            z-index: 10;
+        }
+        canvas {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+        }
+
+        .center-cap {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            background: #2c3e50;
+            border: 3px solid #f39c12;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 5;
+        }
+
+        .spin-btn {
+            background: #e67e22; color: white; border: none;
+            padding: 14px 35px; font-size: 16px; font-weight: bold;
+            border-radius: 30px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+            transition: all 0.2s ease;
+        }
+        .spin-btn:hover { background: #d35400; transform: scale(1.05); }
+        .spin-btn:disabled { background: #7f8c8d; cursor: not-allowed; transform: scale(1); }
+        
+        .modal {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .modal-card {
+            background: #2c3e50; padding: 30px; border-radius: 20px;
+            text-align: center; max-width: 350px; width: 85%;
+            border: 2px solid #f39c12;
+            animation: popup 0.4s ease-out;
+        }
+        @keyframes popup {
+            from { transform: scale(0.7); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-card h2 { color: #2ecc71; font-size: 22px; margin-bottom: 12px; }
+        .modal-card p { font-size: 16px; line-height: 1.5; color: #ecf0f1; margin-bottom: 15px; }
+
+        .countdown-text {
+            font-size: 13px;
+            color: #f39c12;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .modal-card button {
+            background: #2ecc71; color: white; border: none;
+            padding: 12px 28px; font-size: 15px; font-weight: bold;
+            border-radius: 10px; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .modal-card button:hover { background: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Kahve Teklifi Karar Çarkı ☕</h1>
+        <p>Kaderinde ne var? Çarkı çevir ve kararını ver!</p>
+    </div>
+
+    <div class="wheel-wrapper">
+        <div class="arrow"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+        <div class="center-cap">☕</div>
+    </div>
+
+    <button class="spin-btn" id="spinBtn" onclick="spin()">Çarkı Çevir 🎲</button>
+
+    <div class="modal" id="resultModal">
+        <div class="modal-card">
+            <h2>Kader Konuştu! 🎉</h2>
+            <p id="resultText">Evet, bir kahve içmek istiyorum ☕</p>
+            <div class="countdown-text" id="countdown">Kader belirlendi! <span id="timer">3</span> saniye içinde WhatsApp'a aktarılıyorsun...</div>
+            <button id="locBtn" onclick="sendWhatsappMessage()">Haydi kahve içmeye gidelim! ☕</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+
+        const slices = [
+            { text: "Evet, kahve içelim ☕", color: "#2ecc71" },
+            { text: "Hayır istemiyorum 🙈", color: "#e74c3c" },
+            { text: "Hayır istemiyorum ❌", color: "#c0392b" },
+            { text: "Hayır istemiyorum 🙅‍♀️", color: "#e74c3c" },
+            { text: "Hayır istemiyorum 🤐", color: "#c0392b" },
+            { text: "Hayır istemiyorum 🚫", color: "#e74c3c" },
+            { text: "Hayır istemiyorum 👎", color: "#c0392b" },
+            { text: "Hayır istemiyorum 🛑", color: "#e74c3c" }
+        ];
+
+        const numSlices = slices.length;
+        const sliceAngle = (2 * Math.PI) / numSlices;
+        let currentAngle = 0;
+        let isSpinning = false;
+        let lastSliceIndex = -1;
+
+        // --- SES EFEKTİ MOTORU ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.04);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.04);
+        }
+
+        // --- LOCALSTORAGE KONTROLÜ ---
+        if (localStorage.getItem('wheelSpun') === 'true') {
+            spinBtn.disabled = true;
+            spinBtn.innerText = "Kader kararını verdi! ☕";
+        }
+
+        function drawWheel() {
+            const radius = canvas.width / 2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            slices.forEach((slice, i) => {
+                const angle = currentAngle + i * sliceAngle;
+                ctx.beginPath();
+                ctx.moveTo(radius, radius);
+                ctx.arc(radius, radius, radius, angle, angle + sliceAngle);
+                ctx.fillStyle = slice.color;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#1a1a2e";
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(radius, radius);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 14px sans-serif";
+                ctx.fillText(slice.text, radius - 20, 5);
+                ctx.restore();
+            });
+        }
+
+        drawWheel();
+
+        function spin() {
+            if (isSpinning || localStorage.getItem('wheelSpun') === 'true') return;
+            isSpinning = true;
+            spinBtn.disabled = true;
+
+            const fullRounds = 5;
+            const edgeBoundaryAngle = (3 * Math.PI / 2) - sliceAngle + 0.02;
+            const fakeStopAngle = (fullRounds * 2 * Math.PI) + edgeBoundaryAngle;
+            const microShift = 0.06; 
+
+            let start = null;
+            const mainDuration = 3800; 
+
+            function animate(timestamp) {
+                if (!start) start = timestamp;
+                const progress = (timestamp - start) / mainDuration;
+
+                if (progress < 1) {
+                    const easeOut = 1 - Math.pow(1 - progress, 3);
+                    currentAngle = easeOut * fakeStopAngle;
+
+                    const currentSliceIndex = Math.floor((currentAngle % (2 * Math.PI)) / sliceAngle);
+                    if (currentSliceIndex !== lastSliceIndex) {
+                        playClickSound();
+                        lastSliceIndex = currentSliceIndex;
+                    }
+
+                    drawWheel();
+                    requestAnimationFrame(animate);
+                } else {
+                    currentAngle = fakeStopAngle;
+                    drawWheel();
+
+                    setTimeout(() => {
+                        let shiftStart = null;
+                        const shiftDuration = 300;
+
+                        function shiftAnimate(shiftTimestamp) {
+                            if (!shiftStart) shiftStart = shiftTimestamp;
+                            const shiftProgress = (shiftTimestamp - shiftStart) / shiftDuration;
+
+                            if (shiftProgress < 1) {
+                                currentAngle = fakeStopAngle + (shiftProgress * microShift);
+                                drawWheel();
+                                requestAnimationFrame(shiftAnimate);
+                            } else {
+                                currentAngle = fakeStopAngle + microShift;
+                                drawWheel();
+                                isSpinning = false;
+                                localStorage.setItem('wheelSpun', 'true');
+                                spinBtn.innerText = "Kader kararını verdi! ☕";
+                                showResult();
+                            }
+                        }
+                        requestAnimationFrame(shiftAnimate);
+                    }, 700);
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function showResult() {
+            confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+            document.getElementById('resultModal').style.display = 'flex';
+
+            // Geri Sayım Mantığı (3 Saniye)
+            let seconds = 3;
+            const timerElement = document.getElementById('timer');
+            const countdownInterval = setInterval(() => {
+                seconds--;
+                if (seconds >= 0) {
+                    timerElement.innerText = seconds;
+                }
+                if (seconds === 0) {
+                    clearInterval(countdownInterval);
+                    sendWhatsappMessage();
+                }
+            }, 1000);
+        }
+
+        // --- WHATSAPP YÖNLENDİRME ---
+        function sendWhatsappMessage() {
+            const phone = "905419579256";
+            const text = encodeURIComponent("Çark kaderimi belirledi, kahve teklifini kabul ediyorum! ☕");
+            
+            window.location.href = `https://wa.me/${phone}?text=${text}`;
+        }
+    </script>
+</body>
+</html>
