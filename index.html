@@ -7,10 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #fff;
             display: flex;
@@ -19,39 +17,81 @@
             justify-content: center;
             min-height: 100vh;
             padding: 20px;
+            position: relative;
+            background-color: #0d070f;
+            overflow-x: hidden;
         }
 
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* --- ARKA PLAN ÇİFT GÖRSEL YAPISI --- */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            z-index: -1;
+            pointer-events: none;
         }
 
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { font-size: 24px; color: #f39c12; margin-bottom: 8px; }
-        .header p { font-size: 14px; color: #bdc3c7; }
+        /* Sol Taraf Görseli (bg2.jpg) */
+        .bg-left {
+            width: 50%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            filter: brightness(0.85);
+            background-color: #111; /* Resim yüklenene kadar siyah ekran yerine koyu ton */
+        }
+
+        /* Sağ Taraf Görseli (bg.jpg) */
+        .bg-right {
+            width: 50%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            filter: brightness(0.85);
+            background-color: #111;
+        }
+
+        /* --- İÇERİK TASARIMI --- */
+        .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+            background: rgba(0, 0, 0, 0.65);
+            padding: 10px 22px;
+            border-radius: 15px;
+            backdrop-filter: blur(6px);
+            z-index: 2;
+        }
+        .header h1 { font-size: 22px; color: #f39c12; margin-bottom: 4px; }
+        .header p { font-size: 13px; color: #ffffff; }
 
         .wheel-wrapper {
             position: relative;
-            width: 320px;
-            height: 320px;
-            margin-bottom: 25px;
+            width: 280px;
+            height: 280px;
+            margin-bottom: 20px;
+            z-index: 2;
         }
         .arrow {
             position: absolute;
-            top: -15px;
+            top: -12px;
             left: 50%;
             transform: translateX(-50%);
             width: 0; height: 0;
-            border-left: 15px solid transparent;
-            border-right: 15px solid transparent;
-            border-top: 25px solid #e74c3c;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 20px solid #e74c3c;
             z-index: 10;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
         }
+        
         canvas {
             width: 100%; height: 100%;
             border-radius: 50%;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.8);
         }
 
         .center-cap {
@@ -59,29 +99,47 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 50px;
-            height: 50px;
-            background: #2c3e50;
+            width: 42px;
+            height: 42px;
+            background: rgba(44, 62, 80, 0.9);
             border: 3px solid #f39c12;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            font-size: 18px;
+            box-shadow: 0 0 12px rgba(0,0,0,0.6);
             z-index: 5;
         }
 
         .spin-btn {
-            background: #e67e22; color: white; border: none;
-            padding: 14px 35px; font-size: 16px; font-weight: bold;
+            background: rgba(230, 126, 34, 0.95); 
+            color: white; border: none;
+            padding: 12px 30px; font-size: 15px; font-weight: bold;
             border-radius: 30px; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
             transition: all 0.2s ease;
+            backdrop-filter: blur(3px);
+            z-index: 2;
         }
         .spin-btn:hover { background: #d35400; transform: scale(1.05); }
-        .spin-btn:disabled { background: #7f8c8d; cursor: not-allowed; transform: scale(1); }
+        .spin-btn:disabled { background: rgba(127, 140, 141, 0.85); cursor: not-allowed; transform: scale(1); }
         
+        /* MOBİL VE TABLET UYUMU */
+        @media (max-width: 768px) {
+            .bg-container {
+                flex-direction: column;
+            }
+            .bg-left, .bg-right {
+                width: 100%;
+                height: 50%;
+            }
+            .wheel-wrapper {
+                width: 250px;
+                height: 250px;
+            }
+        }
+
         .modal {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%;
@@ -119,6 +177,12 @@
 </head>
 <body>
 
+    <!-- Arka Plan: Sol Taraf bg2.jpg, Sağ Taraf bg.jpg -->
+    <div class="bg-container">
+        <img src="bg2.jpg" class="bg-left" alt="Sol Arka Plan">
+        <img src="bg.jpg" class="bg-right" alt="Sağ Arka Plan">
+    </div>
+
     <div class="header">
         <h1>Kahve Teklifi Karar Çarkı ☕</h1>
         <p>Kaderinde ne var? Çarkı çevir ve kararını ver!</p>
@@ -147,14 +211,14 @@
         const spinBtn = document.getElementById('spinBtn');
 
         const slices = [
-            { text: "Evet, kahve içelim ☕", color: "#2ecc71" },
-            { text: "Hayır istemiyorum 🙈", color: "#e74c3c" },
-            { text: "Hayır istemiyorum ❌", color: "#c0392b" },
-            { text: "Hayır istemiyorum 🙅‍♀️", color: "#e74c3c" },
-            { text: "Hayır istemiyorum 🤐", color: "#c0392b" },
-            { text: "Hayır istemiyorum 🚫", color: "#e74c3c" },
-            { text: "Hayır istemiyorum 👎", color: "#c0392b" },
-            { text: "Hayır istemiyorum 🛑", color: "#e74c3c" }
+            { text: "Evet, kahve içelim ☕", color: "rgba(46, 204, 113, 0.4)" },
+            { text: "Başka zaman söz 🙈", color: "rgba(231, 76, 60, 0.35)" },
+            { text: "Çok yoğunum valla 😅", color: "rgba(192, 57, 43, 0.35)" },
+            { text: "Bugün modumda değilim 🤐", color: "rgba(231, 76, 60, 0.35)" },
+            { text: "Diyet yapıyorum ☕❌", color: "rgba(192, 57, 43, 0.35)" },
+            { text: "Kaderimiz bu değilmiş 💔", color: "rgba(231, 76, 60, 0.35)" },
+            { text: "Kahve beni çarpar ⚡", color: "rgba(192, 57, 43, 0.35)" },
+            { text: "Evden çıkasım yok 🛌", color: "rgba(231, 76, 60, 0.35)" }
         ];
 
         const numSlices = slices.length;
@@ -194,22 +258,30 @@
 
             slices.forEach((slice, i) => {
                 const angle = currentAngle + i * sliceAngle;
+                
                 ctx.beginPath();
                 ctx.moveTo(radius, radius);
                 ctx.arc(radius, radius, radius, angle, angle + sliceAngle);
                 ctx.fillStyle = slice.color;
                 ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = "#1a1a2e";
+                
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
                 ctx.stroke();
 
                 ctx.save();
                 ctx.translate(radius, radius);
                 ctx.rotate(angle + sliceAngle / 2);
                 ctx.textAlign = "right";
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 14px sans-serif";
-                ctx.fillText(slice.text, radius - 20, 5);
+                ctx.fillStyle = "#ffffff"; 
+                
+                ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+                ctx.shadowBlur = 5;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                
+                ctx.font = "bold 13.5px sans-serif";
+                ctx.fillText(slice.text, radius - 18, 5);
                 ctx.restore();
             });
         }
@@ -281,7 +353,6 @@
             confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
             document.getElementById('resultModal').style.display = 'flex';
 
-            // Geri Sayım Mantığı (3 Saniye)
             let seconds = 3;
             const timerElement = document.getElementById('timer');
             const countdownInterval = setInterval(() => {
